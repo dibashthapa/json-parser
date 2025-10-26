@@ -1,0 +1,23 @@
+[package]
+name = "json_parser-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+serde_json = "1.0.145"
+
+[dependencies.json_parser]
+path = ".."
+
+
+[[bin]]
+name = "parse_json"
+path = "fuzz_targets/parse_json.rs"
+test = false
+doc = false
+bench = false

@@ -7,4 +7,12 @@ edition = "2024"
 name="check"
 path="./bin/check.rs"
 
+[[bin]]
+name="generate_corpus"
+path="./bin/generate_corpus.rs"
+
+
 [dependencies]
+arbitrary = "1.4.2"
+
+[dev-dependencies]
