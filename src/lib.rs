@@ -18,6 +18,7 @@ pub enum JsonValue {
 #[derive(Debug)]
 pub enum ParsingError {
     UnexpectedToken(Box<str>),
+    StackOverflow,
     InvalidLiteral(Box<str>),
     InvalidNumber(Box<str>),
     InvalidBoolean(Box<str>),
@@ -36,6 +37,7 @@ impl Display for ParsingError {
             Self::InvalidString(x) => write!(f, "Invalid string {}", x),
             Self::InvalidObject(x) => write!(f, "Invalid Object {}", x),
             Self::UnexpectedToken(x) => write!(f, "Unexpected token: {}", x),
+            Self::StackOverflow => write!(f, "Maximum stack depth reached"),
         }
     }
 }
@@ -356,7 +358,7 @@ pub fn parse(source: &str) -> ParsingResult<JsonValue> {
     match tokenize(source) {
         Ok(tokens) => {
             let mut tokens = tokens.iter().peekable();
-            let value = parse_value(&mut tokens)?;
+            let value = parse_value(&mut tokens, 0)?;
 
             if tokens.peek().is_some() {
                 return Err(ParsingError::UnexpectedToken(
@@ -369,11 +371,14 @@ pub fn parse(source: &str) -> ParsingResult<JsonValue> {
         Err(error) => Err(error),
     }
 }
-
-pub fn parse_value(tokens: &mut Peekable<Iter<'_, Token>>) -> ParsingResult<JsonValue> {
-    //
-    // {"name": "dibash"}
-    // JsonValue::Object()
+const MAX_NESTING_DEPTH: usize = 1000;
+pub fn parse_value(
+    tokens: &mut Peekable<Iter<'_, Token>>,
+    depth: usize,
+) -> ParsingResult<JsonValue> {
+    if depth > MAX_NESTING_DEPTH {
+        return Err(ParsingError::StackOverflow);
+    }
     match tokens.peek() {
         Some(Token::Float(v)) => {
             // TODO: Fix this hack
@@ -408,7 +413,7 @@ pub fn parse_value(tokens: &mut Peekable<Iter<'_, Token>>) -> ParsingResult<Json
             }
 
             loop {
-                let value = parse_value(tokens)?;
+                let value = parse_value(tokens, depth + 1)?;
                 members.push(value);
 
                 match tokens.peek() {
@@ -455,7 +460,7 @@ pub fn parse_value(tokens: &mut Peekable<Iter<'_, Token>>) -> ParsingResult<Json
                     ));
                 }
 
-                let value = parse_value(tokens)?;
+                let value = parse_value(tokens, depth + 1)?;
                 members.push((key.clone(), value));
 
                 match tokens.peek() {
@@ -632,6 +637,12 @@ mod tests {
     #[test]
     fn test_y_structure_lonely_null() {
         let result = parse("null");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_y_empty_string() {
+        let result = parse(r#""[]""#);
         assert!(result.is_ok());
     }
 
@@ -1676,5 +1687,11 @@ mod tests {
     fn test_n_multidigit_number_then_00() {
         let result = parse("123\u{0000}");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_nocrash() {
+        let result = parse("1e949");
+        assert!(result.is_ok());
     }
 }
