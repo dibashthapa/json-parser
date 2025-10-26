@@ -11,3 +11,5 @@ Not all JSON parsers agree on the same specification. The filenames, starting wi
 - Use SIMD
 - Support for diagnostics
 - Zerocopy Parsing (Avoid allocations, and just try to move the buffer)
+- Implement fuzzing to discover new issues
+- Try to write everything from scratch and avoid dependencies
